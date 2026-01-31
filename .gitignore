@@ -1,0 +1,18 @@
+# Frontend
+frontend/node_modules/
+frontend/.next/
+
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/routes/__pycache__/
+backend/db/finance.db
+backend/*.pyc
+
+# Environment
+.env
+backend/.env
+
+# OS
+.DS_Store
+Thumbs.db
