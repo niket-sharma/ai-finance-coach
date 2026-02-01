@@ -1,33 +1,74 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/sidebar";
 import InvestmentTracker from "@/components/investment-tracker";
-
 import { API_BASE } from "@/lib/config";
+
+function extractTicker(name: string): string {
+  // "Apple (AAPL)" → "AAPL"
+  const match = name.match(/\(([A-Za-z0-9._-]{1,10})\)/);
+  if (match) return match[1].toUpperCase();
+  // If it already looks like a ticker (1–5 uppercase letters), use it directly
+  if (/^[A-Z]{1,5}$/.test(name.trim())) return name.trim();
+  return name.trim().toUpperCase();
+}
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<any[]>([]);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchInvestments = async () => {
+  const fetchInvestments = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/investments`);
       if (res.ok) {
         const data = await res.json();
         setInvestments(data);
+        return data;
       }
-    } catch (err) {
+    } catch {
       setError("Failed to load investments");
-    } finally {
-      setLoading(false);
     }
-  };
+    return [];
+  }, []);
+
+  const fetchLivePrices = useCallback(async (invs: any[]) => {
+    if (!invs.length) return;
+    const symbols = [...new Set(invs.map((inv: any) => extractTicker(inv.asset_name)))].join(",");
+    try {
+      const res = await fetch(`${API_BASE}/market/quotes?symbols=${symbols}`);
+      if (res.ok) {
+        const data = await res.json();
+        const priceMap: Record<string, number> = {};
+        for (const [sym, quote] of Object.entries(data)) {
+          priceMap[sym] = (quote as any).price;
+        }
+        setLivePrices(priceMap);
+      }
+    } catch { /* silent — fall back to manual prices */ }
+  }, []);
 
   useEffect(() => {
-    fetchInvestments();
-  }, []);
+    const init = async () => {
+      const invs = await fetchInvestments();
+      await fetchLivePrices(invs);
+      setLoading(false);
+    };
+    init();
+  }, [fetchInvestments, fetchLivePrices]);
+
+  // Merge live prices into investments
+  const enrichedInvestments = investments.map((inv: any) => {
+    const ticker = extractTicker(inv.asset_name);
+    const livePrice = livePrices[ticker];
+    return {
+      ...inv,
+      current_price: livePrice != null ? livePrice : inv.current_price,
+      live: livePrice != null,
+    };
+  });
 
   const handleAdd = async (investment: any) => {
     const res = await fetch(`${API_BASE}/investments`, {
@@ -39,7 +80,8 @@ export default function InvestmentsPage() {
       const err = await res.json();
       throw new Error(err.detail || "Failed to add investment");
     }
-    await fetchInvestments();
+    const invs = await fetchInvestments();
+    await fetchLivePrices(invs);
   };
 
   const handleDelete = async (id: number) => {
@@ -48,7 +90,7 @@ export default function InvestmentsPage() {
       if (res.ok) {
         setInvestments((prev) => prev.filter((inv: any) => inv.id !== id));
       }
-    } catch (err) {
+    } catch {
       setError("Failed to delete investment");
     }
   };
@@ -56,7 +98,6 @@ export default function InvestmentsPage() {
   return (
     <div className="flex min-h-screen bg-[#0f1117]">
       <Sidebar />
-
       <main className="ml-64 flex-1 p-8 min-h-screen">
         {/* Header */}
         <div className="mb-8">
@@ -66,6 +107,9 @@ export default function InvestmentsPage() {
           </div>
           <p className="text-[#64748b] text-sm ml-11">
             Track your portfolio across stocks, crypto, mutual funds, and ETFs.
+            {Object.keys(livePrices).length > 0 && (
+              <span className="text-[#22c55e] ml-2">● {Object.keys(livePrices).length} live prices</span>
+            )}
           </p>
         </div>
 
@@ -96,18 +140,11 @@ export default function InvestmentsPage() {
           </div>
         ) : (
           <InvestmentTracker
-            investments={investments}
+            investments={enrichedInvestments}
             onAdd={handleAdd}
             onDelete={handleDelete}
           />
         )}
-
-        {/* Note */}
-        <div className="mt-8 p-4 bg-[#1a1d2e]/50 border border-[#2a2f44] rounded-xl">
-          <p className="text-[#64748b] text-xs text-center">
-            MVP: Current prices are entered manually. Live price feeds (Yahoo Finance, Alpha Vantage) are planned for v2.
-          </p>
-        </div>
       </main>
     </div>
   );

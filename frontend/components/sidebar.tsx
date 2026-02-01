@@ -8,6 +8,9 @@ const navItems = [
   { href: "/transactions", icon: "💳", label: "Transactions" },
   { href: "/insights", icon: "🧠", label: "AI Insights" },
   { href: "/investments", icon: "📈", label: "Investments" },
+  { href: "/market", icon: "🌍", label: "Market" },
+  { href: "/recommendations", icon: "💡", label: "Signals" },
+  { href: "/agent", icon: "🤖", label: "Trading Agent" },
   { href: "/settings", icon: "⚙️", label: "Settings" },
 ];
 
@@ -30,7 +33,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (
@@ -55,7 +58,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom - User/Version */}
+      {/* Bottom */}
       <div className="p-4 border-t border-[#2a2f44]">
         <div className="flex items-center gap-3 px-2">
           <div className="w-8 h-8 rounded-full bg-[#6366f1]/20 flex items-center justify-center text-sm">
@@ -63,7 +66,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[#eef2ff] text-xs font-medium truncate">User</p>
-            <p className="text-[#64748b] text-xs">MVP v1.0</p>
+            <p className="text-[#64748b] text-xs">v2.0</p>
           </div>
         </div>
       </div>

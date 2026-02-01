@@ -1,30 +1,132 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/sidebar";
+import { API_BASE } from "@/lib/config";
+
+interface BrokerInfo {
+  id: number;
+  broker: string;
+  is_paper: boolean;
+  status: string;
+  connected_at: string | null;
+  last_synced_at: string | null;
+  account_info: string | null;
+}
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-  });
+  const [profile, setProfile] = useState({ name: "", email: "" });
   const [saved, setSaved] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Broker state
+  const [brokers, setBrokers] = useState<BrokerInfo[]>([]);
+  const [alpacaConnected, setAlpacaConnected] = useState(false);
+  const [alpacaApiKey, setAlpacaApiKey] = useState("");
+  const [alpacaSecretKey, setAlpacaSecretKey] = useState("");
+  const [alpacaIsPaper, setAlpacaIsPaper] = useState(true);
+  const [brokerLoading, setBrokerLoading] = useState(false);
+  const [brokerError, setBrokerError] = useState("");
+  const [brokerSuccess, setBrokerSuccess] = useState("");
+
+  const fetchBrokerStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/brokers/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setBrokers(data.brokers || []);
+        const alpaca = data.brokers?.find((b: BrokerInfo) => b.broker === "alpaca");
+        setAlpacaConnected(!!alpaca && alpaca.status === "connected");
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => { fetchBrokerStatus(); }, [fetchBrokerStatus]);
+
+  // Profile
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
     setSaved(false);
   };
-
-  const handleSave = () => {
-    // Placeholder: In production, this would call an API
+  const handleProfileSave = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  // Broker actions
+  const connectAlpaca = async () => {
+    setBrokerLoading(true);
+    setBrokerError("");
+    setBrokerSuccess("");
+    try {
+      const res = await fetch(`${API_BASE}/brokers/connect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          broker: "alpaca",
+          api_key: alpacaApiKey,
+          secret_key: alpacaSecretKey,
+          is_paper: alpacaIsPaper,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBrokerSuccess(`Connected! Synced ${data.positions_synced} positions. Portfolio: $${data.portfolio_value}`);
+        setAlpacaApiKey("");
+        setAlpacaSecretKey("");
+        await fetchBrokerStatus();
+      } else {
+        const err = await res.json();
+        setBrokerError(err.detail || "Connection failed");
+      }
+    } catch {
+      setBrokerError("Network error — try again");
+    }
+    setBrokerLoading(false);
+  };
+
+  const disconnectAlpaca = async () => {
+    setBrokerLoading(true);
+    try {
+      await fetch(`${API_BASE}/brokers/disconnect?broker=alpaca`, { method: "DELETE" });
+      await fetchBrokerStatus();
+    } catch { /* silent */ }
+    setBrokerLoading(false);
+  };
+
+  const syncAlpaca = async () => {
+    setBrokerLoading(true);
+    setBrokerError("");
+    setBrokerSuccess("");
+    try {
+      const res = await fetch(`${API_BASE}/brokers/sync`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setBrokerSuccess(data.message);
+        await fetchBrokerStatus();
+      }
+    } catch {
+      setBrokerError("Sync failed");
+    }
+    setBrokerLoading(false);
+  };
+
+  const alpacaBroker = brokers.find((b) => b.broker === "alpaca");
+
+  // Parse account_info string
+  const parseAccountInfo = (info: string | null) => {
+    if (!info) return {};
+    try {
+      // account_info is stored as Python repr string, convert to JSON-like
+      const fixed = info.replace(/'/g, '"').replace(/None/g, "null").replace(/True/g, "true").replace(/False/g, "false");
+      return JSON.parse(fixed);
+    } catch {
+      return {};
+    }
   };
 
   return (
     <div className="flex min-h-screen bg-[#0f1117]">
       <Sidebar />
-
       <main className="ml-64 flex-1 p-8 min-h-screen">
         {/* Header */}
         <div className="mb-8">
@@ -32,53 +134,28 @@ export default function SettingsPage() {
             <span className="text-2xl">⚙️</span>
             <h1 className="text-[#eef2ff] text-2xl font-bold">Settings</h1>
           </div>
-          <p className="text-[#64748b] text-sm ml-11">
-            Manage your profile and preferences.
-          </p>
+          <p className="text-[#64748b] text-sm ml-11">Manage your profile, brokerages, and preferences.</p>
         </div>
 
         <div className="max-w-2xl space-y-6">
-          {/* Profile Section */}
+          {/* Profile */}
           <div className="bg-[#1a1d2e] border border-[#2a2f44] rounded-2xl p-6">
             <h2 className="text-[#eef2ff] text-base font-semibold mb-1">Profile</h2>
             <p className="text-[#64748b] text-xs mb-5">Update your personal information</p>
-
             <div className="space-y-4">
-              {/* Avatar Placeholder */}
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-[#6366f1]/20 flex items-center justify-center text-2xl border-2 border-dashed border-[#6366f1]/30">
-                  👤
-                </div>
-                <div>
-                  <button className="text-[#6366f1] text-xs font-medium hover:text-[#4f46e5] transition-colors">
-                    Upload photo
-                  </button>
-                  <p className="text-[#64748b] text-xs mt-0.5">PNG, JPG up to 2MB</p>
-                </div>
-              </div>
-
-              {/* Name */}
               <div>
-                <label className="text-[#64748b] text-xs font-medium uppercase tracking-wider">Display Name</label>
+                <label className="text-[#64748b] text-xs font-medium uppercase tracking-wider">Name</label>
                 <input
-                  type="text"
-                  name="name"
-                  value={profile.name}
-                  onChange={handleChange}
+                  type="text" name="name" value={profile.name} onChange={handleProfileChange}
                   placeholder="Your name"
                   className="w-full mt-1.5 bg-[#252a3a] border border-[#2a2f44] rounded-lg px-3 py-2.5 text-[#eef2ff] text-sm
                     focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]/30 transition-colors"
                 />
               </div>
-
-              {/* Email */}
               <div>
                 <label className="text-[#64748b] text-xs font-medium uppercase tracking-wider">Email</label>
                 <input
-                  type="email"
-                  name="email"
-                  value={profile.email}
-                  onChange={handleChange}
+                  type="email" name="email" value={profile.email} onChange={handleProfileChange}
                   placeholder="you@example.com"
                   className="w-full mt-1.5 bg-[#252a3a] border border-[#2a2f44] rounded-lg px-3 py-2.5 text-[#eef2ff] text-sm
                     focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]/30 transition-colors"
@@ -87,43 +164,144 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Connected Accounts (Placeholder) */}
+          {/* Brokerage — Alpaca */}
           <div className="bg-[#1a1d2e] border border-[#2a2f44] rounded-2xl p-6">
-            <h2 className="text-[#eef2ff] text-base font-semibold mb-1">Connected Accounts</h2>
-            <p className="text-[#64748b] text-xs mb-5">Link your bank and brokerage accounts for automatic syncing</p>
+            <h2 className="text-[#eef2ff] text-base font-semibold mb-1">Brokerage</h2>
+            <p className="text-[#64748b] text-xs mb-5">Connect a brokerage account to sync your portfolio and enable the trading agent.</p>
 
-            <div className="space-y-3">
-              {[
-                { name: "Bank Account", icon: "🏦", status: "Not connected" },
-                { name: "Credit Card", icon: "💳", status: "Not connected" },
-                { name: "Brokerage", icon: "📊", status: "Not connected" },
-                { name: "Cryptocurrency Exchange", icon: "₿", status: "Not connected" },
-              ].map((account) => (
-                <div
-                  key={account.name}
-                  className="flex items-center justify-between bg-[#252a3a] border border-[#2a2f44] rounded-xl px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#1a1d2e] flex items-center justify-center text-sm">
-                      {account.icon}
-                    </div>
-                    <div>
-                      <p className="text-[#eef2ff] text-sm font-medium">{account.name}</p>
-                      <p className="text-[#64748b] text-xs">{account.status}</p>
-                    </div>
-                  </div>
-                  <button className="text-[#6366f1] text-xs font-medium hover:text-[#4f46e5] transition-colors
-                    border border-[#6366f1]/30 hover:border-[#6366f1]/50 px-3 py-1 rounded-lg">
-                    Connect
-                  </button>
+            {brokerError && (
+              <div className="bg-[#7f1d1d]/40 border border-[#ef4444]/30 rounded-lg px-3 py-2 mb-4">
+                <p className="text-[#ef4444] text-xs">{brokerError}</p>
+              </div>
+            )}
+            {brokerSuccess && (
+              <div className="bg-[#166534]/40 border border-[#22c55e]/30 rounded-lg px-3 py-2 mb-4">
+                <p className="text-[#22c55e] text-xs">{brokerSuccess}</p>
+              </div>
+            )}
+
+            {/* Alpaca */}
+            <div className="border border-[#2a2f44] rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📊</span>
+                  <span className="text-[#eef2ff] text-sm font-semibold">Alpaca</span>
+                  {alpacaConnected && (
+                    <span className="text-xs bg-[#166534]/40 text-[#22c55e] px-2 py-0.5 rounded-full font-semibold">Connected</span>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              {alpacaConnected && alpacaBroker ? (
+                <div className="space-y-3">
+                  {/* Info row */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {(() => {
+                      const info = parseAccountInfo(alpacaBroker.account_info);
+                      return (
+                        <>
+                          <div className="bg-[#252a3a] rounded-lg p-3">
+                            <p className="text-[#64748b] text-xs">Portfolio</p>
+                            <p className="text-[#eef2ff] text-sm font-semibold">${info.portfolio_value || "—"}</p>
+                          </div>
+                          <div className="bg-[#252a3a] rounded-lg p-3">
+                            <p className="text-[#64748b] text-xs">Buying Power</p>
+                            <p className="text-[#eef2ff] text-sm font-semibold">${info.buying_power || "—"}</p>
+                          </div>
+                          <div className="bg-[#252a3a] rounded-lg p-3">
+                            <p className="text-[#64748b] text-xs">Mode</p>
+                            <p className={`text-sm font-semibold ${alpacaBroker.is_paper ? "text-[#a5b4fc]" : "text-[#ef4444]"}`}>
+                              {alpacaBroker.is_paper ? "Paper" : "Live"}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {alpacaBroker.last_synced_at && (
+                    <p className="text-[#64748b] text-xs">
+                      Last synced: {new Date(alpacaBroker.last_synced_at).toLocaleString()}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={syncAlpaca}
+                      disabled={brokerLoading}
+                      className="bg-[#252a3a] hover:bg-[#353b55] border border-[#2a2f44] text-[#94a3b8] text-xs font-semibold px-4 py-2 rounded-lg
+                        transition-colors disabled:opacity-50"
+                    >
+                      ↻ Sync Portfolio
+                    </button>
+                    <button
+                      onClick={disconnectAlpaca}
+                      disabled={brokerLoading}
+                      className="bg-[#7f1d1d]/40 hover:bg-[#7f1d1d]/60 border border-[#ef4444]/30 text-[#ef4444] text-xs font-semibold px-4 py-2 rounded-lg
+                        transition-colors disabled:opacity-50"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Paper / Live toggle */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setAlpacaIsPaper(true)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors
+                        ${alpacaIsPaper ? "bg-[#6366f1]/15 text-[#6366f1] border border-[#6366f1]/40" : "bg-[#252a3a] text-[#94a3b8] border border-[#2a2f44]"}`}
+                    >
+                      📄 Paper Trading
+                    </button>
+                    <button
+                      onClick={() => setAlpacaIsPaper(false)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors
+                        ${!alpacaIsPaper ? "bg-[#ef4444]/15 text-[#ef4444] border border-[#ef4444]/40" : "bg-[#252a3a] text-[#94a3b8] border border-[#2a2f44]"}`}
+                    >
+                      💵 Live Trading
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[#64748b] text-xs font-medium uppercase tracking-wider">API Key</label>
+                    <input
+                      type="text" value={alpacaApiKey} onChange={(e) => setAlpacaApiKey(e.target.value)}
+                      placeholder="Your Alpaca API key"
+                      className="w-full mt-1.5 bg-[#252a3a] border border-[#2a2f44] rounded-lg px-3 py-2 text-[#eef2ff] text-sm
+                        focus:outline-none focus:border-[#6366f1] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[#64748b] text-xs font-medium uppercase tracking-wider">Secret Key</label>
+                    <input
+                      type="password" value={alpacaSecretKey} onChange={(e) => setAlpacaSecretKey(e.target.value)}
+                      placeholder="Your Alpaca secret key"
+                      className="w-full mt-1.5 bg-[#252a3a] border border-[#2a2f44] rounded-lg px-3 py-2 text-[#eef2ff] text-sm
+                        focus:outline-none focus:border-[#6366f1] transition-colors"
+                    />
+                  </div>
+                  <button
+                    onClick={connectAlpaca}
+                    disabled={brokerLoading || !alpacaApiKey || !alpacaSecretKey}
+                    className="w-full bg-[#6366f1] hover:bg-[#4f46e5] disabled:opacity-40 text-white text-sm font-semibold py-2.5 rounded-lg
+                      transition-colors shadow-md shadow-[#6366f1]/20"
+                  >
+                    {brokerLoading ? "Connecting…" : "Connect Alpaca"}
+                  </button>
+                  <p className="text-[#64748b] text-xs text-center">
+                    Get keys at <a href="https://app.alpaca.markets" target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:underline">app.alpaca.markets</a>
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="mt-4 p-3 bg-[#1e1b4b]/30 border border-[#6366f1]/20 rounded-lg">
-              <p className="text-[#a5b4fc] text-xs text-center">
-                🔜 Account syncing is coming in v2. Manual transaction logging is available now.
-              </p>
+            {/* Coming soon placeholders */}
+            <div className="grid grid-cols-3 gap-3">
+              {["Bank Account", "Credit Card", "Crypto Exchange"].map((name) => (
+                <div key={name} className="border border-[#2a2f44] rounded-lg p-3 opacity-40">
+                  <p className="text-[#94a3b8] text-xs font-medium">{name}</p>
+                  <p className="text-[#64748b] text-xs mt-0.5">Coming soon</p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -131,21 +309,17 @@ export default function SettingsPage() {
           <div className="bg-[#1a1d2e] border border-[#2a2f44] rounded-2xl p-6">
             <h2 className="text-[#eef2ff] text-base font-semibold mb-1">Preferences</h2>
             <p className="text-[#64748b] text-xs mb-5">Customize your experience</p>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[#eef2ff] text-sm">Currency</p>
-                  <p className="text-[#64748b] text-xs">Your default currency</p>
-                </div>
-                <select className="bg-[#252a3a] border border-[#2a2f44] rounded-lg px-3 py-2 text-[#eef2ff] text-sm
-                  focus:outline-none focus:border-[#6366f1] transition-colors cursor-pointer">
-                  <option className="bg-[#252a3a]">USD ($)</option>
-                  <option className="bg-[#252a3a]">EUR (€)</option>
-                  <option className="bg-[#252a3a]">GBP (£)</option>
+            <div className="space-y-5">
+              <div>
+                <label className="text-[#64748b] text-xs font-medium uppercase tracking-wider">Currency</label>
+                <select className="w-full mt-1.5 bg-[#252a3a] border border-[#2a2f44] rounded-lg px-3 py-2.5 text-[#eef2ff] text-sm
+                  focus:outline-none focus:border-[#6366f1] transition-colors appearance-none cursor-pointer">
+                  <option value="USD">USD — US Dollar</option>
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="GBP">GBP — British Pound</option>
+                  <option value="INR">INR — Indian Rupee</option>
                 </select>
               </div>
-
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[#eef2ff] text-sm">Dark Mode</p>
@@ -155,7 +329,6 @@ export default function SettingsPage() {
                   <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow"></div>
                 </div>
               </div>
-
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[#eef2ff] text-sm">Weekly Report Email</p>
@@ -170,7 +343,7 @@ export default function SettingsPage() {
 
           {/* Save */}
           <button
-            onClick={handleSave}
+            onClick={handleProfileSave}
             className="w-full bg-[#6366f1] hover:bg-[#4f46e5] text-white font-semibold py-3 rounded-xl
               transition-all duration-200 shadow-lg shadow-[#6366f1]/20"
           >
