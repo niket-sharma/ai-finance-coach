@@ -29,6 +29,7 @@ app.add_middleware(
     allow_origins=[
         os.getenv("FRONTEND_URL", "http://localhost:3000"),
         "http://localhost:3000",
+        "https://ai-finance-coach-seven.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
