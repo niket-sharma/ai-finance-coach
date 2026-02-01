@@ -6,7 +6,7 @@ import { SummaryCard, CategoryBreakdown } from "@/components/dashboard-cards";
 import TransactionList from "@/components/transaction-list";
 import AddTransactionModal from "@/components/add-transaction-modal";
 
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/lib/config";
 
 interface DashboardData {
   total_balance: number;

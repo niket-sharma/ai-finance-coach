@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/sidebar";
 import InsightsPanel from "@/components/insights-panel";
 
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/lib/config";
 
 export default function InsightsPage() {
   const [transactions, setTransactions] = useState<any[]>([]);

@@ -5,7 +5,7 @@ import Sidebar from "@/components/sidebar";
 import TransactionList from "@/components/transaction-list";
 import AddTransactionModal from "@/components/add-transaction-modal";
 
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/lib/config";
 
 const CATEGORIES = ["All", "Food", "Transport", "Housing", "Entertainment", "Shopping", "Healthcare", "Utilities", "Investment", "Income", "Other"];
 const TYPES = ["All", "income", "expense"];

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/sidebar";
 import InvestmentTracker from "@/components/investment-tracker";
 
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/lib/config";
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<any[]>([]);
