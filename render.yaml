@@ -1,0 +1,24 @@
+services:
+  # Backend — FastAPI
+  - name: ai-finance-coach-api
+    type: web
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    env:
+      - key: DATABASE_URL
+        value: sqlite:///./db/finance.db
+      - key: FRONTEND_URL
+        value: https://ai-finance-coach.onrender.com
+
+  # Frontend — Next.js
+  - name: ai-finance-coach
+    type: web
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    healthCheckPath: /
+    env:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ai-finance-coach-api.onrender.com/api
