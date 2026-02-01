@@ -8,6 +8,10 @@ DATABASE_URL = os.getenv(
     f"sqlite:///{os.path.join(os.path.dirname(__file__), 'db', 'finance.db')}"
 )
 
+# Render provides postgresql:// but psycopg3 needs postgresql+psycopg://
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+
 # SQLite needs check_same_thread; PostgreSQL does not
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
