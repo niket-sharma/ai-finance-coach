@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from database import Base, engine, get_db, DATABASE_URL
 from models import Transaction, Investment, Watchlist, BrokerConnection, AgentConfig, Trade
-from routes import transactions, investments, insights, market, recommendations, brokers, agent
+from routes import transactions, investments, insights, market, recommendations, brokers, agent, multi_agent
 
 # ---------------------------------------------------------------------------
 # Create tables
@@ -74,6 +74,7 @@ app.include_router(market.router)
 app.include_router(recommendations.router)
 app.include_router(brokers.router)
 app.include_router(agent.router)
+app.include_router(multi_agent.router)
 
 
 # ---------------------------------------------------------------------------

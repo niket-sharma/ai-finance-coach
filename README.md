@@ -1,6 +1,6 @@
 # 💰 AI Finance Coach
 
-A modern, AI-powered personal finance tracking application built with Next.js and FastAPI. Track your transactions, get intelligent spending insights, and manage your investment portfolio — all in one clean dark-themed dashboard.
+A modern, AI-powered personal finance tracking application with **Multi-Agent System** for autonomous trading. Built with **CrewAI**, **LangChain**, Next.js, and FastAPI.
 
 ![AI Finance Coach](https://via.placeholder.com/800x400/0f1117/6366f1?text=AI+Finance+Coach+Dashboard)
 
@@ -10,6 +10,12 @@ A modern, AI-powered personal finance tracking application built with Next.js an
 - **💳 Transactions** — Full CRUD with filtering by category, type, and date range
 - **🧠 AI Insights** — Rule-based spending analysis with trend detection and savings recommendations
 - **📈 Investments** — Portfolio tracker for stocks, crypto, mutual funds, and ETFs
+- **🤖 Multi-Agent Trading** — Autonomous trading system with specialized agents:
+  - **Technical Analysis Agent** — Chart patterns, indicators, and price action
+  - **Fundamental Research Agent** — News sentiment and company analysis
+  - **Risk Management Agent** — Position sizing and trade validation
+- **🔄 Autonomous Loops** — APScheduler-based periodic trading execution
+- **📡 Real-time Market Data** — Alpaca API integration for live prices and execution
 - **⚙️ Settings** — Profile configuration and preference management
 
 ## 🏗️ Tech Stack
@@ -19,8 +25,33 @@ A modern, AI-powered personal finance tracking application built with Next.js an
 | Frontend | Next.js 14 (App Router), React 18, TypeScript |
 | Styling | Tailwind CSS (dark theme) |
 | Backend | Python FastAPI |
+| AI Framework | CrewAI + LangChain |
+| LLM | OpenAI GPT-4 |
+| Market Data | Alpaca API + Finnhub |
 | Database | SQLite via SQLAlchemy |
+| Scheduling | APScheduler |
 | Deployment | Docker Compose |
+
+## 🤖 Multi-Agent System
+
+The AI Finance Coach uses a **Multi-Agent System** powered by CrewAI and LangChain. Three specialized agents collaborate to generate trading signals:
+
+1. **Technical Analysis Agent**
+   - Moving Averages (SMA/EMA)
+   - RSI, MACD, Bollinger Bands
+   - Volume analysis
+   
+2. **Fundamental Research Agent**
+   - News sentiment analysis (via GPT-4)
+   - Company events and market context
+   - Finnhub API integration
+   
+3. **Risk Management Agent**
+   - Position sizing recommendations
+   - Portfolio risk assessment
+   - Trade validation and stop-loss calculation
+
+**See [MULTI_AGENT_ARCHITECTURE.md](MULTI_AGENT_ARCHITECTURE.md) for detailed documentation.**
 
 ## 🚀 Quick Start
 

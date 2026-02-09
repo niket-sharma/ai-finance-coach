@@ -10,3 +10,7 @@ numpy>=1.26.0
 apscheduler>=3.10.0
 openai>=1.0.0
 cryptography>=41.0.0
+crewai>=0.1.0
+langchain>=0.1.0
+langchain-openai>=0.0.5
+alpaca-trade-api>=3.0.0
